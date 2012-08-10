@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="author" content="">
+<meta name="created" content="2012-08-10">
+<meta name="modified" content="Fri 10 Aug 2012 11:54:21 AM CST">
+<title> Prototype</title>
+<link rel="stylesheet" href="http://yui.yahooapis.com/3.6.0/build/cssfonts/fonts-min.css">
+<script type="text/javascript" src="http://yui.yahooapis.com/3.6.0/build/yui/yui-min.js"></script>
+<script type="text/javascript" src="video-parser.js"></script>
+<style type="text/css">
+
+</style>
+</head>
+<body>
+    <div class="log">
+    </div>
+    <script>
+    YUI().use('video-parser','console', function (Y) {
+        var url, callback;
+            url = "http://www.youtube.com/watch?v=GokKUqLcvD8";
+
+            callback = function (o){
+                Y.log(o.streamUrl);
+            };
+           (new Y.Console({height:"600px"})).render(".log");
+       Y.VideoParser.parse(url, callback);
+    });
+    </script>
+</body>
+</html>

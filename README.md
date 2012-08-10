@@ -6,12 +6,12 @@ This is utility to get youtube stream url by using pure javascript ( but with ja
 
 #How to use.
 
-1. include script
+
+##Include script.
 <pre> <code>&lt;script type="text/javascript" src="http://yui.yahooapis.com/3.6.0/build/yui/yui-min.js"></script>
  &lt;script type="text/javascript" src="video-parser.js"></script>
 </code></pre>
-
-2.YUI.use() to use this utility.
+##YUI.use() to use this utility.
 <pre><code>YUI().use('video-parser','console', function (Y) {
          var url, callback;
              url = "http://www.youtube.com/watch?v=GokKUqLcvD8"; //youtube video url
@@ -24,6 +24,7 @@ This is utility to get youtube stream url by using pure javascript ( but with ja
      });
 </code></pre>
 
+#Some knowhow
 ## Cross domain restriction
 We use YUI jsonp to handle cross domain restriction.
 In proxy.php, we you can send parameter id, url into this page. It will echo Youtube Video infomation.

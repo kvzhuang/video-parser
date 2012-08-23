@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="author" content="">
 <meta name="created" content="2012-08-10">
-<meta name="modified" content="Fri 10 Aug 2012 11:54:21 AM CST">
+<meta name="modified" content="Thu 23 Aug 2012 02:24:01 PM CST">
 <title> Prototype</title>
 <link rel="stylesheet" href="http://yui.yahooapis.com/3.6.0/build/cssfonts/fonts-min.css">
 <script type="text/javascript" src="http://yui.yahooapis.com/3.6.0/build/yui/yui-min.js"></script>
@@ -19,13 +19,19 @@
     <script>
     YUI().use('video-parser','console', function (Y) {
         var url, callback;
-            url = "http://www.youtube.com/watch?v=GokKUqLcvD8";
+           //url = "http://www.youtube.com/watch?v=GokKUqLcvD8";
+           url = "http://www.youtube.com/watch?v=xqfW3MBYxPM";
+
 
             callback = function (o){
-                Y.log(o.streamUrl);
+                Y.log(o);
             };
-           (new Y.Console({height:"600px"})).render(".log");
-       Y.VideoParser.parse(url, callback);
+       //    (new Y.Console({height:"600px"})).render(".log");
+        Y.VideoParser.parse(url, callback);
+        Y.on("video-parser:error", function (o){
+            Y.log(o.errorcode);
+            Y.log(o.reason);
+        });
     });
     </script>
 </body>

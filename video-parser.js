@@ -2,22 +2,26 @@
 YUI.add("video-parser", function (Y) {
 
     var API_URL = "http://www.youtube.com/get_video_info?video_id=",
-        FMT_PRIORITY_IDS = ["37","46","22", "85", "35", "18","34"],
+        FMT_PRIORITY_IDS = ["22", "85", "35", "18","34"],
         FMT_RESOLUTION = {
-            "37": "1080",
-            "46": "1080",
             "22": "720",
             "85": "520",
             "35": "480",
             "18": "360",
             "34": "360"
         },
+        _timer,
+        _timeoutValue = 5000,
         _log,
+        _vid,
         _getParameter,
         _getUrlCallback,
+        _urlHandler,
         _makeRequest,
         _getResolution,
         _getFiletype,
+        _callback,
+        _originalUrl,
         _getVideoUrl;
 
     /**
@@ -35,7 +39,7 @@ YUI.add("video-parser", function (Y) {
     _log = function (msg, type, module) {
         msg    = msg || null;
         type   = type || "info";
-        module = module || "video-parser";
+        module = module || "Y.VideoParser";
         if (!msg) {
             return;
         }
@@ -58,21 +62,15 @@ YUI.add("video-parser", function (Y) {
         }
     };
 
-    /**
-     *  Make a request and get infomation from youtube.
-     *  We use jsonp in YUI.
-     *  @method _makeRequest
-     *  @param  vid {String} Video id from youtube url.
-     *  @param  callback {Function} Callback function.
-     *  @param  originUrl {String} Reserved for future use.
-     *  @private
-     */
-    _makeRequest = function (vid, callback, originUrl) {
-        _log("_makeRequest() is execute");
-        var url, urlHandler;
-        urlHandler = function (data) {
-            var content, encodedUrl, playUrl, fmtInfo, resolutionObj;
-            content = Y.QueryString.parse(data);
+    _urlHandler = function (data) {
+        _log("urlHandler is executed.");
+        var content, encodedUrl, playUrl, fmtInfo, resolutionObj,
+            status , errorcode;
+        content = Y.QueryString.parse(data);
+        status = content.status;
+        if (status === "ok") {
+            Y.log(status);
+            Y.log(content.reason);
             fmtInfo = content.fmt_list.split(',');
             resolutionObj = _getResolution(fmtInfo, content.url_encoded_fmt_stream_map);
             encodedUrl =
@@ -82,17 +80,57 @@ YUI.add("video-parser", function (Y) {
             } else {
                 playUrl = encodedUrl.url;
             }
+            //_log("The parsed streaming URL is '" + playUrl + "'");
 
-             callback({
-                url          : originUrl,
-                vid          : vid,
+             _callback({
+                url          : _originalUrl,
+                vid          : _vid,
                 resolutions  : resolutionObj,
-                streamUrl    : playUrl, //TODO remove.
+                streamUrl : playUrl, //TODO remove.
                 subtitleUrl  : null
              });
-        };
-        url = "proxy.php?id=" + vid+ "&url="+API_URL+"&callback={callback}";
-        Y.jsonp(url, urlHandler);
+
+        } else {
+            Y.fire("video-parser:error",
+                {"errorcode" : content.errorcode,"reason": content.reason});
+        }
+        if (_timer) {
+            _timer.cancel();
+            _timer = null;
+        }
+    };
+    /**
+     *  Make a request and get infomation from youtube.
+     *  We use jsonp in YUI.
+     *  @method _makeRequest
+     *  @param  vid {String} Video id from youtube url.
+     *  @param  callback {Function} Callback function.
+     *  @param  originUrl {String} Reserved for future use.
+     *  @private
+     */
+    _makeRequest = function (vid) {
+        _log("_makeRequest() is execute");
+        var url;
+        try {
+            url = "proxy.php?id=" + vid + "&callback={callback}";
+            _log(url);
+            Y.jsonp(url, {
+                timeout: _timeoutValue,
+                args: [],
+                on: {
+                    success : _urlHandler ,
+                    failure : function () {
+                        Y.fire("video-parser:error", {"errorcode" : "failure"});
+                    },
+                    timeout : function () {
+                        Y.fire("video-parser:error", {"errorcode" : "timeout"});
+                    }
+                }
+            });
+
+        } catch(err) {
+            Y.fire("video-parser:error", {"errorcode" : "error"});
+        }
     };
 
     /**
@@ -103,16 +141,17 @@ YUI.add("video-parser", function (Y) {
      *  @param  fmtStreamMap {String} Query string map, store a video's all stream urls.
      *  @private
      */
-    _getVideoUrl = function (chosenFmtId, availFmtIds, fmtStreamMap) {
-        var pattern, matchUrl;
-        fmtStreamMap = window.unescape(fmtStreamMap);
-        if (availFmtIds.indexOf(chosenFmtId)===0) {
-            return fmtStreamMap.substring(4,fmtStreamMap.indexOf('&quality='));
+    _getVideoUrl = function(chosenFmtId, availFmtIds, fmtStreamMap) {
+        var pattern, matchUrl, offset;
+        fmtStreamMap = unescape(fmtStreamMap);
+        offset = Y.Array.indexOf(availFmtIds, chosenFmtId);
+        if (offset === 0) {
+            return fmtStreamMap.substring(4, fmtStreamMap.indexOf('&quality='));
         }
-        if (availFmtIds.indexOf(chosenFmtId)===availFmtIds.length-1) {
-            return fmtStreamMap.substring(fmtStreamMap.lastIndexOf('http'),fmtStreamMap.lastIndexOf('&quality='));
+        if (offset === availFmtIds.length - 1) {
+            return fmtStreamMap.substring(fmtStreamMap.lastIndexOf('http'), fmtStreamMap.lastIndexOf('&quality='));
         }
-        pattern = new RegExp('&itag='+availFmtIds[availFmtIds.indexOf(chosenFmtId)-1]+',url=(.+?)&quality=');
+        pattern = new RegExp('&itag=' + availFmtIds[offset - 1] + ',url=(.+?)&quality=');
         matchUrl = fmtStreamMap.match(pattern);
         if (!Y.Lang.isNull(matchUrl)) {
             return matchUrl[1];
@@ -141,34 +180,28 @@ YUI.add("video-parser", function (Y) {
      *  @param  fmtStreamMap {String} Query string map, store a video's all stream urls.
      *  @private
      */
-    _getResolution = function (fmtInfo, fmtStreamMap) {
-        var i,
-            id,
-            fmtQualityList = "",
-            fid,
-            resolution,
-            fileType,
-            fileTypeObj = {},
-            streamUrl,
-            availFmtIds,
-            fmtResolutions,
-            resolutionObj = {};
-        availFmtIds  = new Array(fmtInfo.length);
-        fmtResolutions  = new Array(fmtInfo.length);
+    _getResolution = function(fmtInfo, fmtStreamMap) {
+        var i, id, fmtQualityList = "",
+            fid, resolution, fileType, fileTypeObj = {},
+            streamUrl, availFmtIds, fmtResolutions, resolutionObj = {};
+        availFmtIds = new Array(fmtInfo.length);
+        fmtResolutions = new Array(fmtInfo.length);
         for (i in fmtInfo) {
             if (fmtInfo.hasOwnProperty(i)) {
-                availFmtIds[i]    = fmtInfo[i].split('/')[0];
+                availFmtIds[i] = fmtInfo[i].split('/')[0];
                 fmtResolutions[i] = fmtInfo[i].split('/')[1];
-                fmtQualityList   += (availFmtIds[i]+' = '+fmtResolutions[i]+' ('+_getFiletype(availFmtIds[i])+')\n');
+                fmtQualityList += (availFmtIds[i] + ' = ' + fmtResolutions[i] + ' (' + _getFiletype(availFmtIds[i]) + ')\n');
             }
         }
         for (id in FMT_PRIORITY_IDS) {
             if (FMT_PRIORITY_IDS.hasOwnProperty(id)) {
                 if (Y.Array.indexOf(availFmtIds, FMT_PRIORITY_IDS[id]) !== -1) {
-                    fid =  FMT_PRIORITY_IDS[id];
-                    fileType = _getFiletype(fid);
+                    fileType  = {};
+                    fid       = FMT_PRIORITY_IDS[id];
+                    fileType  = _getFiletype(fid);
                     streamUrl = _getVideoUrl(FMT_PRIORITY_IDS[id], availFmtIds, fmtStreamMap);
                     if (!Y.Lang.isNull(streamUrl) && !Y.Lang.isUndefined(streamUrl)) {
+                        fileTypeObj = {};
                         fileTypeObj[fileType] = streamUrl;
                         resolution = FMT_RESOLUTION[fid];
                         resolutionObj[resolution] = fileTypeObj;
@@ -221,9 +254,10 @@ YUI.add("video-parser", function (Y) {
     Y.VideoParser = {
         "parse": function (url, callback) {
             _log("video-parser parse() execute url:"+url);
-            var vid;
-            vid = _getParameter(url, "v");
-            _makeRequest(vid, callback, url);
+            _vid         = _getParameter(url, "v");
+            _originalUrl = url;
+            _callback    = callback;
+            _makeRequest(_vid);
         }
     };
 

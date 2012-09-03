@@ -2,8 +2,9 @@
 YUI.add("video-parser", function (Y) {
 
     var API_URL = "http://www.youtube.com/get_video_info?video_id=",
-        FMT_PRIORITY_IDS = ["22", "85", "35", "18","34"],
+        FMT_PRIORITY_IDS = ["45", "22", "85", "35", "18","34"],
         FMT_RESOLUTION = {
+            "45": "720",
             "22": "720",
             "85": "520",
             "35": "480",
@@ -54,6 +55,7 @@ YUI.add("video-parser", function (Y) {
      *  @private
      */
     _getParameter = function (url, key) {
+        _log("_getParameter() is execute");
         var urls, queryString;
         urls = url.split("?");
         if (urls.length>=2) {
@@ -62,6 +64,12 @@ YUI.add("video-parser", function (Y) {
         }
     };
 
+    /**
+     *  Parse URL's callback function.
+     *  @method _urlHandler
+     *  @param  data {String} The callback data from XHR or jsonp.
+     *  @private
+     */
     _urlHandler = function (data) {
         _log("urlHandler is executed.");
         var content, encodedUrl, playUrl, fmtInfo, resolutionObj,
@@ -142,6 +150,7 @@ YUI.add("video-parser", function (Y) {
      *  @private
      */
     _getVideoUrl = function(chosenFmtId, availFmtIds, fmtStreamMap) {
+        _log("_VideoUrl() is execute");
         var pattern, matchUrl, offset;
         fmtStreamMap = unescape(fmtStreamMap);
         offset = Y.Array.indexOf(availFmtIds, chosenFmtId);
@@ -181,6 +190,7 @@ YUI.add("video-parser", function (Y) {
      *  @private
      */
     _getResolution = function(fmtInfo, fmtStreamMap) {
+        _log("_getResolution() is execute");
         var i, id, fmtQualityList = "",
             fid, resolution, fileType, fileTypeObj = {},
             streamUrl, availFmtIds, fmtResolutions, resolutionObj = {};
@@ -220,6 +230,7 @@ YUI.add("video-parser", function (Y) {
      *  @private
      */
     _getFiletype = function (fmtId) {
+        _log("_getFiletype() is execute");
         switch(fmtId) {
             case '5':
             case '6':

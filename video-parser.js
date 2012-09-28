@@ -79,16 +79,22 @@ YUI.add("video-parser", function (Y) {
         if (status === "ok") {
             Y.log(status);
             Y.log(content.reason);
+            Y.log(content);
             fmtInfo = content.fmt_list.split(',');
             resolutionObj = _getResolution(fmtInfo, content.url_encoded_fmt_stream_map);
             encodedUrl =
                     Y.QueryString.parse(content.url_encoded_fmt_stream_map);
             if (Y.Lang.isArray(encodedUrl.url)) {
-                playUrl = encodedUrl.url[0];
+                playUrl = encodedUrl.url[0] ;
+                if (playUrl.indexOf("signature") === -1) {
+                    playUrl =  playUrl + "&signature=" + encodedUrl.sig[0];
+                }
             } else {
-                playUrl = encodedUrl.url;
+                playUrl = encodedUrl.url ;
+                if (playUrl.indexOf("signature") === -1) {
+                    playUrl =  playUrl + "&signature=" + encodedUrl.sig[0];
+                }
             }
-            //_log("The parsed streaming URL is '" + playUrl + "'");
 
              _callback({
                 url          : _originalUrl,
@@ -150,20 +156,21 @@ YUI.add("video-parser", function (Y) {
      *  @private
      */
     _getVideoUrl = function(chosenFmtId, availFmtIds, fmtStreamMap) {
-        _log("_VideoUrl() is execute");
-        var pattern, matchUrl, offset;
-        fmtStreamMap = unescape(fmtStreamMap);
+        _log("getVideoUrl is execute");
+        var pattern, matchUrl, offset, httpString, httpMap;
+        fmtStreamMap = window.unescape(fmtStreamMap);
         offset = Y.Array.indexOf(availFmtIds, chosenFmtId);
-        if (offset === 0) {
-            return fmtStreamMap.substring(4, fmtStreamMap.indexOf('&quality='));
-        }
-        if (offset === availFmtIds.length - 1) {
-            return fmtStreamMap.substring(fmtStreamMap.lastIndexOf('http'), fmtStreamMap.lastIndexOf('&quality='));
-        }
-        pattern = new RegExp('&itag=' + availFmtIds[offset - 1] + ',url=(.+?)&quality=');
+        pattern = new RegExp("itag=" + availFmtIds[offset] + "&url=(.+?)&quality=");
         matchUrl = fmtStreamMap.match(pattern);
         if (!Y.Lang.isNull(matchUrl)) {
-            return matchUrl[1];
+            _log(" use the first url");
+            httpString = matchUrl[1].split("?");
+            httpMap = Y.QueryString.parse(httpString[1]);
+            if (!httpMap.signature) {
+                httpMap.signature = httpMap.sig.toString();
+                delete httpMap.sig;
+            }
+            return httpString[0] + "?" + Y.QueryString.stringify(httpMap);
         }
         return null;
     };

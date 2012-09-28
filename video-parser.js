@@ -79,7 +79,6 @@ YUI.add("video-parser", function (Y) {
         if (status === "ok") {
             Y.log(status);
             Y.log(content.reason);
-            Y.log(content);
             fmtInfo = content.fmt_list.split(',');
             resolutionObj = _getResolution(fmtInfo, content.url_encoded_fmt_stream_map);
             encodedUrl =
@@ -278,5 +277,4 @@ YUI.add("video-parser", function (Y) {
             _makeRequest(_vid);
         }
     };
-
-}, "0.0.1", {requires: ["io-base", "querystring-parse", "jsonp", "yui-base"]});
+}, "0.0.1", {requires: ["io-base", "querystring-stringify", "querystring-parse", "jsonp", "yui-base"]});
